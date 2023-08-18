@@ -3890,6 +3890,7 @@ __metadata:
     "@uniswap/sdk-core": ~4.0.1
     "@uniswap/v2-sdk": ~3.0.1
     autoprefixer: ~10.4.12
+    bignumber.js: 4.0.4
     daisyui: ~3.5.1
     dotenv: ^16.3.1
     eslint: ~8.24.0
@@ -7008,6 +7009,13 @@ __metadata:
   version: 3.3.0
   resolution: "bigint-crypto-utils@npm:3.3.0"
   checksum: 9598ce57b23f776c8936d44114c9f051e62b5fa654915b664784cbcbacc5aa0485f4479571c51ff58008abb1210c0d6a234853742f07cf84bda890f2a1e01000
+  languageName: node
+  linkType: hard
+
+"bignumber.js@npm:4.0.4":
+  version: 4.0.4
+  resolution: "bignumber.js@npm:4.0.4"
+  checksum: 316da1adee992f3ba12cbe0f4c3c25bb4164638674358e1b3744de4c166924dc4a36d883e0d154c6ad44426be301b59cfe84361f09a3a85c6cdf920f2b11d028
   languageName: node
   linkType: hard
 

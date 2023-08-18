@@ -1,47 +1,102 @@
+import { useRef, useState } from "react";
 import { WebBundlr } from "@bundlr-network/client";
+import BigNumber from "bignumber.js";
 import type { NextPage } from "next";
-import { useAccount, useWalletClient } from "wagmi";
+import { formatEther } from "viem";
+import { PublicClient, useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { MetaHeader } from "~~/components/MetaHeader";
 
-// import { ContractData } from "~~/components/example-ui/ContractData";
-// import { ContractInteraction } from "~~/components/example-ui/ContractInteraction";
+const createEthersViemProxy = (walletClient: any, publicClient: PublicClient, address: string): any => {
+  walletClient.getSigner = () => walletClient;
+  walletClient.getAddress = async () => walletClient.getAddresses().then((a: any) => a[0]);
+  walletClient._signTypedData = async (domain: any, types: any, message: any) => {
+    message["Transaction hash"] = "0x" + Buffer.from(message["Transaction hash"]).toString("hex");
+    //@ts-ignore
+    return await walletClient.signTypedData({
+      domain,
+      message,
+      types,
+      account: address,
+      primaryType: "Bundlr",
+    });
+  };
 
-const createEthersViemProxy = (client: any): any => {
-  console.log("Creating proxy", client);
+  console.log(walletClient);
 
-  // const handler = {
-  //   get(target, prop: string, receiver) {
-  //     if (prop === "getSigner") {
-  //       return client;
-  //     } else if (prop === "getAddress") {
-  //       return client.getAddresses().then((a: any) => a[0]);
-  //     } else {
-  //       return Reflect.get(target, prop, receiver);
-  //     }
-  //   },
-  // };
+  walletClient.getGasPrice = publicClient.getGasPrice.bind(publicClient);
 
-  // return new Proxy(client, handler) as any;
+  walletClient.estimateGas = async (tx: any) => {
+    const estimatedGas = await publicClient.estimateGas({
+      account: tx.from,
+      value: tx.value,
+      to: tx.to,
+    });
 
-  client.getSigner = () => client;
-  client.getAddress = async () => client.getAddresses().then((a: any) => a[0]);
+    return new BigNumber(estimatedGas.toString());
+  };
 
-  return client;
+  return walletClient;
 };
 
 const ExampleUI: NextPage = () => {
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const { address, isConnecting, isDisconnected } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
+
+  const [buttonDisabled, setButtonDisabled] = useState(false);
 
   const mint = async () => {
+    // setButtonDisabled(true);
+    const text = textAreaRef?.current?.value;
     console.log("Minting", { address, isConnecting, isDisconnected, walletClient });
 
     if (!address) {
       alert("Please connect a wallet first");
     }
 
-    const bundlr = new WebBundlr("https://node1.bundlr.network", "matic", createEthersViemProxy(walletClient));
+    walletClient;
+
+    if (!text) {
+      alert("Please enter some text");
+    }
+
+    const bundlr = new WebBundlr(
+      "https://node1.bundlr.network",
+      "matic",
+      createEthersViemProxy(walletClient, publicClient, address!),
+    );
+    // @ts-expect-error
+    bundlr.currencyConfig.getFee = async (): Promise<number> => {
+      return 0;
+    };
+
+    // Otherwise
+    bundlr.currencyConfig.sendTx = async (data): Promise<string> => {
+      const hash = await walletClient!.sendTransaction({
+        to: data.to,
+        value: data.amount.toString(),
+        account: bundlr.address as `0x${string}`,
+      });
+      return hash;
+    };
+
+    bundlr.currencyConfig.createTx = async (amount, to, fee): Promise<{ txId: string | undefined; tx: any }> => {
+      // dummy value/method
+      return { txId: undefined, tx: { amount, to, fee } };
+    };
+
     await bundlr.ready();
+
+    const price = await bundlr.getPrice(text!.length);
+
+    console.log(formatEther(BigInt(price.toString())));
+
+    // await bundlr.fund(price);
+
+    // const response = await bundlr.upload(textAreaRef?.current?.value || "");
+    // console.log(`Data Available at => https://arweave.net/${response.id}`);
+    setButtonDisabled(false);
   };
 
   return (
@@ -59,10 +114,14 @@ const ExampleUI: NextPage = () => {
         <ContractData /> */}
 
         <div>
-          <textarea className="textarea textarea-primary rounded font-mono textarea-md" placeholder="Text"></textarea>
+          <textarea
+            className="textarea textarea-primary rounded font-mono textarea-md"
+            placeholder="Text"
+            ref={textAreaRef}
+          ></textarea>
         </div>
         <div>
-          <button className="btn btn-primary" onClick={mint}>
+          <button className="btn btn-primary" onClick={mint} disabled={buttonDisabled}>
             Mint
           </button>
         </div>
