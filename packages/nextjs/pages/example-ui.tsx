@@ -1,12 +1,47 @@
+import { WebBundlr } from "@bundlr-network/client";
 import type { NextPage } from "next";
+import { useAccount, useWalletClient } from "wagmi";
 import { MetaHeader } from "~~/components/MetaHeader";
 
 // import { ContractData } from "~~/components/example-ui/ContractData";
 // import { ContractInteraction } from "~~/components/example-ui/ContractInteraction";
 
+const createEthersViemProxy = (client: any): any => {
+  console.log("Creating proxy", client);
+
+  // const handler = {
+  //   get(target, prop: string, receiver) {
+  //     if (prop === "getSigner") {
+  //       return client;
+  //     } else if (prop === "getAddress") {
+  //       return client.getAddresses().then((a: any) => a[0]);
+  //     } else {
+  //       return Reflect.get(target, prop, receiver);
+  //     }
+  //   },
+  // };
+
+  // return new Proxy(client, handler) as any;
+
+  client.getSigner = () => client;
+  client.getAddress = async () => client.getAddresses().then((a: any) => a[0]);
+
+  return client;
+};
+
 const ExampleUI: NextPage = () => {
-  const mint = () => {
-    console.log("Minting");
+  const { address, isConnecting, isDisconnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+
+  const mint = async () => {
+    console.log("Minting", { address, isConnecting, isDisconnected, walletClient });
+
+    if (!address) {
+      alert("Please connect a wallet first");
+    }
+
+    const bundlr = new WebBundlr("https://node1.bundlr.network", "matic", createEthersViemProxy(walletClient));
+    await bundlr.ready();
   };
 
   return (
