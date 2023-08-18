@@ -1,9 +1,14 @@
 import type { NextPage } from "next";
 import { MetaHeader } from "~~/components/MetaHeader";
-import { ContractData } from "~~/components/example-ui/ContractData";
-import { ContractInteraction } from "~~/components/example-ui/ContractInteraction";
+
+// import { ContractData } from "~~/components/example-ui/ContractData";
+// import { ContractInteraction } from "~~/components/example-ui/ContractInteraction";
 
 const ExampleUI: NextPage = () => {
+  const mint = () => {
+    console.log("Minting");
+  };
+
   return (
     <>
       <MetaHeader
@@ -14,9 +19,18 @@ const ExampleUI: NextPage = () => {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree&display=swap" rel="stylesheet" />
       </MetaHeader>
-      <div className="grid lg:grid-cols-2 flex-grow" data-theme="exampleUi">
-        <ContractInteraction />
-        <ContractData />
+      <div className="p-5" data-theme="exampleUi">
+        {/* <ContractInteraction />
+        <ContractData /> */}
+
+        <div>
+          <textarea className="textarea textarea-primary rounded font-mono textarea-md" placeholder="Text"></textarea>
+        </div>
+        <div>
+          <button className="btn btn-primary" onClick={mint}>
+            Mint
+          </button>
+        </div>
       </div>
     </>
   );
