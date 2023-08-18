@@ -6,6 +6,12 @@ import { formatEther } from "viem";
 import { PublicClient, useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { MetaHeader } from "~~/components/MetaHeader";
 
+function getStringByteLength(str: string) {
+  const encoder = new TextEncoder();
+  const encodedBytes = encoder.encode(str);
+  return encodedBytes.length;
+}
+
 const createEthersViemProxy = (walletClient: any, publicClient: PublicClient, address: string): any => {
   walletClient.getSigner = () => walletClient;
   walletClient.getAddress = async () => walletClient.getAddresses().then((a: any) => a[0]);
@@ -47,7 +53,7 @@ const ExampleUI: NextPage = () => {
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
   const mint = async () => {
-    // setButtonDisabled(true);
+    setButtonDisabled(true);
     const text = textAreaRef?.current?.value;
     console.log("Minting", { address, isConnecting, isDisconnected, walletClient });
 
@@ -88,14 +94,25 @@ const ExampleUI: NextPage = () => {
 
     await bundlr.ready();
 
-    const price = await bundlr.getPrice(text!.length);
+    const price = await bundlr.getPrice(getStringByteLength(text!));
 
-    console.log(formatEther(BigInt(price.toString())));
+    console.log("Price", formatEther(BigInt(price.toString())));
 
-    // await bundlr.fund(price);
+    // Get loaded balance in atomic units
+    const atomicBalance = await bundlr.getLoadedBalance();
+    console.log(`Node balance (atomic units) = ${atomicBalance}`);
 
-    // const response = await bundlr.upload(textAreaRef?.current?.value || "");
-    // console.log(`Data Available at => https://arweave.net/${response.id}`);
+    // Convert balance to standard
+    const convertedBalance = bundlr.utils.fromAtomic(atomicBalance);
+    console.log(`Node balance (converted) = ${convertedBalance}`);
+
+    if (price.gt(atomicBalance)) {
+      console.log(price.toString(), atomicBalance.toString(), price.minus(atomicBalance).toString());
+      await bundlr.fund(price.minus(atomicBalance));
+    }
+
+    const response = await bundlr.upload(textAreaRef?.current?.value || "");
+    console.log(`Data Available at => https://arweave.net/${response.id}`);
     setButtonDisabled(false);
   };
 
