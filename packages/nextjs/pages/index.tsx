@@ -126,9 +126,10 @@ const ExampleUI: NextPage = () => {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree&display=swap" rel="stylesheet" />
       </MetaHeader>
-      <div className="p-5" data-theme="exampleUi">
+      <div className="p-5 prose max-w-none" data-theme="exampleUi">
         {/* <ContractInteraction />
         <ContractData /> */}
+        <h1>Bundlr ❤️ Arweave ❤️ The Graph 🤩 Demo 🦩</h1>
 
         <div>
           <textarea
