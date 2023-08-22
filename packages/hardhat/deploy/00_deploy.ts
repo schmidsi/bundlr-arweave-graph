@@ -21,7 +21,7 @@ const deployContract: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const { deployer } = await (hre as any).getNamedAccounts();
   const { deploy } = (hre as any).deployments;
 
-  await deploy("BundlArweaNFT", {
+  await deploy("BundlArweaGraNFT", {
     from: deployer,
     // Contract constructor arguments
     args: [],
@@ -39,4 +39,4 @@ export default deployContract;
 
 // Tags are useful if you have multiple deploy files and only want to run one of them.
 // e.g. yarn deploy --tags YourContract
-deployContract.tags = ["BundlArweaNFT"];
+deployContract.tags = ["BundlArweaGraNFT"];
