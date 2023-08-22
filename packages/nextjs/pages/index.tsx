@@ -1,65 +1,150 @@
-import Link from "next/link";
+import { useRef, useState } from "react";
+import { WebBundlr } from "@bundlr-network/client";
+import BigNumber from "bignumber.js";
 import type { NextPage } from "next";
-import { BugAntIcon, MagnifyingGlassIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { formatEther } from "viem";
+import { PublicClient, useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { MetaHeader } from "~~/components/MetaHeader";
 
-const Home: NextPage = () => {
+function getStringByteLength(str: string) {
+  const encoder = new TextEncoder();
+  const encodedBytes = encoder.encode(str);
+  return encodedBytes.length;
+}
+
+const createEthersViemProxy = (walletClient: any, publicClient: PublicClient, address: string): any => {
+  walletClient.getSigner = () => walletClient;
+  walletClient.getAddress = async () => walletClient.getAddresses().then((a: any) => a[0]);
+  walletClient._signTypedData = async (domain: any, types: any, message: any) => {
+    message["Transaction hash"] = "0x" + Buffer.from(message["Transaction hash"]).toString("hex");
+    //@ts-ignore
+    return await walletClient.signTypedData({
+      domain,
+      message,
+      types,
+      account: address,
+      primaryType: "Bundlr",
+    });
+  };
+
+  console.log(walletClient);
+
+  walletClient.getGasPrice = publicClient.getGasPrice.bind(publicClient);
+
+  walletClient.estimateGas = async (tx: any) => {
+    const estimatedGas = await publicClient.estimateGas({
+      account: tx.from,
+      value: tx.value,
+      to: tx.to,
+    });
+
+    return new BigNumber(estimatedGas.toString());
+  };
+
+  return walletClient;
+};
+
+const ExampleUI: NextPage = () => {
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const { address, isConnecting, isDisconnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
+
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+
+  const mint = async () => {
+    setButtonDisabled(true);
+    const text = textAreaRef?.current?.value;
+    console.log("Minting", { address, isConnecting, isDisconnected, walletClient });
+
+    if (!address || !walletClient) {
+      alert("Please connect a wallet first");
+      return;
+    }
+
+    if (!text) {
+      alert("Please enter some text");
+      return;
+    }
+
+    const bundlr = new WebBundlr(
+      "https://node1.bundlr.network",
+      "matic",
+      createEthersViemProxy(walletClient, publicClient, address),
+    );
+    // @ts-expect-error
+    bundlr.currencyConfig.getFee = async (): Promise<number> => {
+      return 0;
+    };
+
+    // Otherwise
+    bundlr.currencyConfig.sendTx = async (data): Promise<string> => {
+      const hash = await walletClient.sendTransaction({
+        to: data.to,
+        value: data.amount.toString(),
+        account: bundlr.address as `0x${string}`,
+      });
+      return hash;
+    };
+
+    bundlr.currencyConfig.createTx = async (amount, to, fee): Promise<{ txId: string | undefined; tx: any }> => {
+      // dummy value/method
+      return { txId: undefined, tx: { amount, to, fee } };
+    };
+
+    await bundlr.ready();
+
+    const price = await bundlr.getPrice(getStringByteLength(text));
+
+    console.log("Price", formatEther(BigInt(price.toString())));
+
+    // Get loaded balance in atomic units
+    const atomicBalance = await bundlr.getLoadedBalance();
+    console.log(`Node balance (atomic units) = ${atomicBalance}`);
+
+    // Convert balance to standard
+    const convertedBalance = bundlr.utils.fromAtomic(atomicBalance);
+    console.log(`Node balance (converted) = ${convertedBalance}`);
+
+    if (price.gt(atomicBalance)) {
+      console.log(price.toString(), atomicBalance.toString(), price.minus(atomicBalance).toString());
+      await bundlr.fund(price.minus(atomicBalance));
+    }
+
+    const response = await bundlr.upload(textAreaRef?.current?.value || "");
+    console.log(`Data Available at => https://arweave.net/${response.id}`);
+    setButtonDisabled(false);
+  };
+
   return (
     <>
-      <MetaHeader />
-      <div className="flex items-center flex-col flex-grow pt-10">
-        <div className="px-5">
-          <h1 className="text-center mb-8">
-            <span className="block text-2xl mb-2">Welcome to</span>
-            <span className="block text-4xl font-bold">Scaffold-ETH 2</span>
-          </h1>
-          <p className="text-center text-lg">
-            Get started by editing{" "}
-            <code className="italic bg-base-300 text-base font-bold">packages/nextjs/pages/index.tsx</code>
-          </p>
-          <p className="text-center text-lg">
-            Edit your smart contract <code className="italic bg-base-300 text-base font-bold">YourContract.sol</code> in{" "}
-            <code className="italic bg-base-300 text-base font-bold">packages/hardhat/contracts</code>
-          </p>
-        </div>
+      <MetaHeader
+        title="Example UI | Scaffold-ETH 2"
+        description="Example UI created with 🏗 Scaffold-ETH 2, showcasing some of its features."
+      >
+        {/* We are importing the font this way to lighten the size of SE2. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree&display=swap" rel="stylesheet" />
+      </MetaHeader>
+      <div className="p-5" data-theme="exampleUi">
+        {/* <ContractInteraction />
+        <ContractData /> */}
 
-        <div className="flex-grow bg-base-300 w-full mt-16 px-8 py-12">
-          <div className="flex justify-center items-center gap-12 flex-col sm:flex-row">
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <BugAntIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Tinker with your smart contract using the{" "}
-                <Link href="/debug" passHref className="link">
-                  Debug Contract
-                </Link>{" "}
-                tab.
-              </p>
-            </div>
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <SparklesIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Experiment with{" "}
-                <Link href="/example-ui" passHref className="link">
-                  Example UI
-                </Link>{" "}
-                to build your own UI.
-              </p>
-            </div>
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <MagnifyingGlassIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Explore your local transactions with the{" "}
-                <Link href="/blockexplorer" passHref className="link">
-                  Block Explorer
-                </Link>{" "}
-                tab.
-              </p>
-            </div>
-          </div>
+        <div>
+          <textarea
+            className="textarea textarea-primary rounded font-mono textarea-md"
+            placeholder="Text"
+            ref={textAreaRef}
+          ></textarea>
+        </div>
+        <div>
+          <button className="btn btn-primary" onClick={mint} disabled={buttonDisabled}>
+            Mint
+          </button>
         </div>
       </div>
     </>
   );
 };
 
-export default Home;
+export default ExampleUI;
