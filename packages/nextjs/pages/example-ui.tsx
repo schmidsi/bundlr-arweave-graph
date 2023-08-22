@@ -57,20 +57,20 @@ const ExampleUI: NextPage = () => {
     const text = textAreaRef?.current?.value;
     console.log("Minting", { address, isConnecting, isDisconnected, walletClient });
 
-    if (!address) {
+    if (!address || !walletClient) {
       alert("Please connect a wallet first");
+      return;
     }
-
-    walletClient;
 
     if (!text) {
       alert("Please enter some text");
+      return;
     }
 
     const bundlr = new WebBundlr(
       "https://node1.bundlr.network",
       "matic",
-      createEthersViemProxy(walletClient, publicClient, address!),
+      createEthersViemProxy(walletClient, publicClient, address),
     );
     // @ts-expect-error
     bundlr.currencyConfig.getFee = async (): Promise<number> => {
@@ -79,7 +79,7 @@ const ExampleUI: NextPage = () => {
 
     // Otherwise
     bundlr.currencyConfig.sendTx = async (data): Promise<string> => {
-      const hash = await walletClient!.sendTransaction({
+      const hash = await walletClient.sendTransaction({
         to: data.to,
         value: data.amount.toString(),
         account: bundlr.address as `0x${string}`,
@@ -94,7 +94,7 @@ const ExampleUI: NextPage = () => {
 
     await bundlr.ready();
 
-    const price = await bundlr.getPrice(getStringByteLength(text!));
+    const price = await bundlr.getPrice(getStringByteLength(text));
 
     console.log("Price", formatEther(BigInt(price.toString())));
 
