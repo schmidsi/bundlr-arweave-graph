@@ -130,7 +130,8 @@ const ExampleUI: NextPage = () => {
         {/* <ContractInteraction />
         <ContractData /> */}
         <h1>Bundlr ❤️ Arweave ❤️ The Graph 🤩 Demo 🦩</h1>
-
+      </div>
+      <div className="p-5">
         <div>
           <textarea
             className="textarea textarea-primary rounded font-mono textarea-md"
@@ -139,6 +140,24 @@ const ExampleUI: NextPage = () => {
           ></textarea>
         </div>
         <div>
+          <ul className="steps">
+            <button data-content="1" className="step step-primary">
+              Estimate
+            </button>
+            <button data-content="2" className="step">
+              Fund Bundlr Gateway
+            </button>
+            <button data-content="3" className="step">
+              Upload Artwork
+            </button>
+            <button data-content="4" className="step">
+              Upload Metadata
+            </button>
+            <button data-content="5" className="step">
+              Mint NFT
+            </button>
+          </ul>
+          {/* <button className="btn btn-primary"> */}
           <button className="btn btn-primary" onClick={mint} disabled={buttonDisabled}>
             Mint
           </button>
