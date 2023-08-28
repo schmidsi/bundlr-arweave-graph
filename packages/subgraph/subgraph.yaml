@@ -22,12 +22,22 @@ dataSources:
         - name: BundlArweaGraNFT
           file: ./abis/BundlArweaGraNFT.json
       eventHandlers:
-        - event: Approval(indexed address,indexed address,indexed uint256)
-          handler: handleApproval
-        - event: ApprovalForAll(indexed address,indexed address,bool)
-          handler: handleApprovalForAll
         - event: Mint(indexed address,string)
           handler: handleMint
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
-      file: ./src/bundl-arwea-gra-nft.ts
+      file: ./src/mapping.ts
+templates:
+  - kind: file/arweave
+    name: ArweaveContent
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MetaData
+      abis:
+        - name: BundlArweaGraNFT
+          file: ./abis/BundlArweaGraNFT.json
+      handler: handleMetaData
+      file: ./src/mapping.ts

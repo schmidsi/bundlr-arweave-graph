@@ -26,3 +26,22 @@ query MyQuery {
   }
 }
 ```
+
+```gql
+{
+  mints(first: 5, orderBy: blockNumber, orderDirection: desc) {
+    id
+    to
+    arweaveHash
+    blockNumber
+    metaData {
+      content
+    }
+  }
+  _meta {
+    block {
+      number
+    }
+  }
+}
+```
