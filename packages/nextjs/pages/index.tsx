@@ -5,6 +5,7 @@ import type { NextPage } from "next";
 import { formatEther } from "viem";
 import { PublicClient, useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { MetaHeader } from "~~/components/MetaHeader";
+import { useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
 
 function getStringByteLength(str: string) {
   const encoder = new TextEncoder();
@@ -44,76 +45,110 @@ const createEthersViemProxy = (walletClient: any, publicClient: PublicClient, ad
   return walletClient;
 };
 
+const getBundlr = async (walletClient: any, publicClient: PublicClient, address: string | undefined) => {
+  if (!address || !walletClient) {
+    alert("Please connect a wallet first");
+    return;
+  }
+
+  const bundlr = new WebBundlr(
+    "https://node1.bundlr.network",
+    "matic",
+    createEthersViemProxy(walletClient, publicClient, address),
+  );
+  // @ts-expect-error
+  bundlr.currencyConfig.getFee = async (): Promise<number> => {
+    return 0;
+  };
+
+  // Otherwise
+  bundlr.currencyConfig.sendTx = async (data): Promise<string> => {
+    const hash = await walletClient.sendTransaction({
+      to: data.to,
+      value: data.amount.toString(),
+      account: bundlr.address as `0x${string}`,
+    });
+    return hash;
+  };
+
+  bundlr.currencyConfig.createTx = async (amount, to, fee): Promise<{ txId: string | undefined; tx: any }> => {
+    // dummy value/method
+    return { txId: undefined, tx: { amount, to, fee } };
+  };
+
+  await bundlr.ready();
+
+  return bundlr;
+};
+
 const ExampleUI: NextPage = () => {
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const { address, isConnecting, isDisconnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
 
-  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [price, setPrice] = useState(0n);
+  const [gatewayBalance, setGatewayBalance] = useState(0n);
+  const [arweaveId, setArweaveId] = useState("");
 
-  const mint = async () => {
-    setButtonDisabled(true);
+  const { writeAsync } = useScaffoldContractWrite({
+    contractName: "BundlArweaGraNFT",
+    functionName: "mint",
+    args: [address, arweaveId],
+    onBlockConfirmation: txnReceipt => {
+      console.log("📦 Transaction blockHash", txnReceipt.blockHash);
+    },
+  });
+
+  const estimate = async () => {
     const text = textAreaRef?.current?.value;
-    console.log("Minting", { address, isConnecting, isDisconnected, walletClient });
-
-    if (!address || !walletClient) {
-      alert("Please connect a wallet first");
-      return;
-    }
+    const bundlr = await getBundlr(walletClient, publicClient, address);
 
     if (!text) {
       alert("Please enter some text");
       return;
     }
 
-    const bundlr = new WebBundlr(
-      "https://node1.bundlr.network",
-      "matic",
-      createEthersViemProxy(walletClient, publicClient, address),
-    );
-    // @ts-expect-error
-    bundlr.currencyConfig.getFee = async (): Promise<number> => {
-      return 0;
-    };
+    if (bundlr) {
+      const price = await bundlr.getPrice(getStringByteLength(text));
+      setPrice(BigInt(price.toString()));
 
-    // Otherwise
-    bundlr.currencyConfig.sendTx = async (data): Promise<string> => {
-      const hash = await walletClient.sendTransaction({
-        to: data.to,
-        value: data.amount.toString(),
-        account: bundlr.address as `0x${string}`,
-      });
-      return hash;
-    };
+      const atomicBalance = await bundlr.getLoadedBalance();
+      setGatewayBalance(BigInt(atomicBalance.toString()));
+    }
+  };
 
-    bundlr.currencyConfig.createTx = async (amount, to, fee): Promise<{ txId: string | undefined; tx: any }> => {
-      // dummy value/method
-      return { txId: undefined, tx: { amount, to, fee } };
-    };
+  const fund = async () => {
+    if (price > gatewayBalance) {
+      const bundlr = await getBundlr(walletClient, publicClient, address);
 
-    await bundlr.ready();
+      if (bundlr) {
+        await bundlr.fund(new BigNumber((price - gatewayBalance).toString()));
+        const atomicBalance = await bundlr.getLoadedBalance();
+        setGatewayBalance(BigInt(atomicBalance.toString()));
+      }
+    }
+  };
 
-    const price = await bundlr.getPrice(getStringByteLength(text));
+  const uploadArtwork = async () => {
+    const text = textAreaRef?.current?.value;
+    const bundlr = await getBundlr(walletClient, publicClient, address);
 
-    console.log("Price", formatEther(BigInt(price.toString())));
-
-    // Get loaded balance in atomic units
-    const atomicBalance = await bundlr.getLoadedBalance();
-    console.log(`Node balance (atomic units) = ${atomicBalance}`);
-
-    // Convert balance to standard
-    const convertedBalance = bundlr.utils.fromAtomic(atomicBalance);
-    console.log(`Node balance (converted) = ${convertedBalance}`);
-
-    if (price.gt(atomicBalance)) {
-      console.log(price.toString(), atomicBalance.toString(), price.minus(atomicBalance).toString());
-      await bundlr.fund(price.minus(atomicBalance));
+    if (!text) {
+      alert("Please enter some text");
+      return;
     }
 
-    const response = await bundlr.upload(textAreaRef?.current?.value || "");
-    console.log(`Data Available at => https://arweave.net/${response.id}`);
-    setButtonDisabled(false);
+    if (bundlr) {
+      const response = await bundlr.upload(text);
+      setArweaveId(response.id);
+      console.log(`Data Available at => https://arweave.net/${response.id}`);
+    }
+  };
+
+  const mint = async () => {
+    console.log("Minting", { address, isConnecting, isDisconnected, walletClient });
+    return writeAsync();
   };
 
   return (
@@ -132,35 +167,53 @@ const ExampleUI: NextPage = () => {
         <h1>Bundlr ❤️ Arweave ❤️ The Graph 🤩 Demo 🦩</h1>
       </div>
       <div className="p-5">
-        <div>
+        <div className="container columns-2">
           <textarea
-            className="textarea textarea-primary rounded font-mono textarea-md"
+            className="textarea textarea-primary rounded font-mono textarea-lg w-full"
             placeholder="Text"
             ref={textAreaRef}
           ></textarea>
+
+          <table className="table-xs">
+            <tbody>
+              {/* row 1 */}
+              <tr>
+                <th className="text-left">Price:</th>
+                <td className="text-right font-mono">{price ? formatEther(price) : "?"} MATIC</td>
+              </tr>
+              {/* row 2 */}
+              <tr>
+                <th className="text-left">Gateway Balance:</th>
+                <td className="text-right font-mono">{gatewayBalance ? formatEther(gatewayBalance) : "?"} MATIC</td>
+              </tr>
+              <tr>
+                <th className="text-left">Difference:</th>
+                <td className="text-right font-mono">
+                  {gatewayBalance && price ? formatEther(price - gatewayBalance) : "?"} MATIC
+                </td>
+              </tr>
+              <tr>
+                <th className="text-left">Arweave ID</th>
+                <td className="text-right font-mono">{arweaveId || "?"}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
         <div>
-          <ul className="steps">
-            <button data-content="1" className="step step-primary">
-              Estimate
+          <div className="join">
+            <button className="btn btn-primary join-item" onClick={estimate}>
+              1. Estimate
             </button>
-            <button data-content="2" className="step">
-              Fund Bundlr Gateway
+            <button className="btn btn-primary join-item" onClick={fund}>
+              2. Fund Bundlr Gateway
             </button>
-            <button data-content="3" className="step">
-              Upload Artwork
+            <button className="btn btn-primary join-item" onClick={uploadArtwork}>
+              3. Upload Artwork
             </button>
-            <button data-content="4" className="step">
-              Upload Metadata
+            <button className="btn btn-primary join-item" onClick={mint}>
+              4. Mint NFT
             </button>
-            <button data-content="5" className="step">
-              Mint NFT
-            </button>
-          </ul>
-          {/* <button className="btn btn-primary"> */}
-          <button className="btn btn-primary" onClick={mint} disabled={buttonDisabled}>
-            Mint
-          </button>
+          </div>
         </div>
       </div>
     </>
