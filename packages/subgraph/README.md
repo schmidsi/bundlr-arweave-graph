@@ -19,5 +19,10 @@ query MyQuery {
     to
     transactionHash
   }
+  _meta {
+    block {
+      number
+    }
+  }
 }
 ```
