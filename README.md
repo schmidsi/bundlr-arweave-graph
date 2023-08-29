@@ -1,5 +1,9 @@
 # Bundlr ❤️ Arweave ❤️ The Graph 🤩 Demo 🦩
 
+Live Demo: https://bundlr-arweave-graph-nextjs.vercel.app
+
+---
+
 [Built with Scaffold ETH 2.0](https://scaffold-eth-2-docs.vercel.app/)
 
 ## Questions
