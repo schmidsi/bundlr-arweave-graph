@@ -1,6 +1,14 @@
 # Bundlr ❤️ Arweave ❤️ The Graph 🤩 Demo 🦩
 
-[Built on Scaffold ETH 2.0](https://scaffold-eth-2-docs.vercel.app/)
+[Built with Scaffold ETH 2.0](https://scaffold-eth-2-docs.vercel.app/)
+
+## Questions
+
+https://twitter.com/schmid_si
+
+## Slides
+
+[![Top Slide](./slide.png)](https://docs.google.com/presentation/d/1jHUaVd7A43e7DBONCTYP7QLqQH0mJiQBe59OJFsqQm8/edit?usp=sharing)
 
 ## Instructions
 
